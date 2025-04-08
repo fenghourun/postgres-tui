@@ -5,6 +5,7 @@ mod widgets;
 
 use crate::app::App;
 use crate::ui::draw;
+use cli_log::init_cli_log;
 
 use crossterm::{
     event::{DisableMouseCapture, EnableMouseCapture},
@@ -19,6 +20,8 @@ fn main() -> Result<(), Box<dyn Error>> {
 }
 
 pub fn run() -> Result<(), Box<dyn Error>> {
+    init_cli_log!();
+
     // setup terminal
     enable_raw_mode()?;
 

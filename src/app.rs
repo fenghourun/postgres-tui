@@ -62,8 +62,6 @@ impl App {
             _ => String::from("postgres"),
         };
 
-        println!("bong {} {} {}", db_name, host, user);
-
         let default_connection_options = PSQLConnectionOptions {
             user: user.clone(),
             host: host.clone(),

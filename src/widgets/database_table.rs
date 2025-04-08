@@ -1,3 +1,5 @@
+use cli_log::info;
+
 #[derive(Debug, Clone, Default)]
 pub struct DatabaseTable {
     pub name: String,
@@ -21,7 +23,7 @@ impl DatabaseTable {
     }
 
     pub fn set_data(&mut self, data: Vec<String>) {
-        println!("Setting data: {:?}", data);
+        info!("Setting data: {:?}", data);
         self.data = data;
     }
 }
