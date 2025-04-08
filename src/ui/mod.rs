@@ -1,6 +1,6 @@
 pub mod datatable;
 pub mod debug;
-pub mod popup;
+pub mod help_window;
 pub mod searchbar;
 pub mod sidebar;
 pub mod statusline;
@@ -51,7 +51,7 @@ pub fn draw(f: &mut Frame, app: &mut App) {
     statusline::render(f, app, statusline_area);
 
     if app.show_keybinds {
-        let p = popup::KeybindsPopup::new(60, 40);
+        let p = help_window::KeybindsPopup::new(60, 40);
         p.render(f);
     }
 

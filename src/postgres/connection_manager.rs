@@ -1,6 +1,7 @@
-use postgres::{Client, Error, NoTls, Row};
+use tokio_postgres::{Client, Error, NoTls, Row};
 
 use crate::app::PSQLConnectionOptions;
+use cli_log::error;
 
 pub struct ConnectionManager {
     client: Client,
@@ -8,23 +9,24 @@ pub struct ConnectionManager {
 }
 
 impl ConnectionManager {
-    pub fn new(connection_options: PSQLConnectionOptions) -> Result<ConnectionManager, Error> {
-        let client_result = Client::connect(
+    pub async fn new(connection_options: PSQLConnectionOptions) -> Result<(), Error> {
+        let (client, connection) = tokio_postgres::connect(
             format!(
                 "host={} user={} dbname={}",
                 connection_options.host, connection_options.user, connection_options.db_name,
             )
             .as_str(),
             NoTls,
-        );
+        )
+        .await?;
 
-        match client_result {
-            Ok(client) => Ok(ConnectionManager {
-                client,
-                connection_options,
-            }),
-            Err(err) => Err(err),
-        }
+        tokio::spawn(async move {
+            if let Err(e) = connection.await {
+                error!("Connection error: {}", e);
+            }
+        });
+
+        Ok(())
     }
 
     pub fn get_databases(&mut self) -> Vec<Row> {
@@ -36,11 +38,13 @@ impl ConnectionManager {
             .expect("Get databases")
     }
 
-    pub fn get_tables_for_database(&mut self) -> Result<Vec<Row>, Error> {
-        self.client.query(
-            "SELECT tablename FROM pg_tables where schemaname = 'public'",
-            &[],
-        )
+    pub async fn get_tables_for_database(&mut self) -> Result<Vec<Row>, Error> {
+        self.client
+            .query(
+                "SELECT tablename FROM pg_tables where schemaname = 'public'",
+                &[],
+            )
+            .await?;
     }
 
     pub fn create_database_connection(

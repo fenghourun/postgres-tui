@@ -112,7 +112,7 @@ impl App {
                     KeyCode::Char('2') => self.focused_element = FocusElement::SearchBar,
                     KeyCode::Char('3') => self.focused_element = FocusElement::Main,
                     KeyCode::Char('q') => self.should_quit = true,
-                    KeyCode::Char('b') => self.show_keybinds = !self.show_keybinds,
+                    KeyCode::Char('?') => self.show_keybinds = !self.show_keybinds,
                     KeyCode::Char('d') => self.show_debug = !self.show_debug,
                     _ => match self.focused_element {
                         FocusElement::Main => self.register_main_keybinds(key),
