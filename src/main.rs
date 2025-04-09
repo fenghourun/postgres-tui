@@ -15,11 +15,12 @@ use crossterm::{
 use ratatui::{backend::CrosstermBackend, Terminal};
 use std::{error::Error, io};
 
-fn main() -> Result<(), Box<dyn Error>> {
-    run()
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn Error>> {
+    run().await
 }
 
-pub fn run() -> Result<(), Box<dyn Error>> {
+pub async fn run() -> Result<(), Box<dyn Error>> {
     init_cli_log!();
 
     // setup terminal
@@ -32,9 +33,9 @@ pub fn run() -> Result<(), Box<dyn Error>> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    let mut app = App::new();
+    let mut app = App::new().await?;
 
-    let res = run_loop(&mut terminal, &mut app);
+    let res = run_loop(&mut terminal, &mut app).await;
 
     if let Err(err) = res {
         disable_raw_mode()?;
@@ -54,14 +55,14 @@ pub fn run() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn run_loop(
+async fn run_loop(
     terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
     app: &mut App,
 ) -> io::Result<()> {
     loop {
         terminal.draw(|f| draw(f, app)).expect("Failed to draw");
 
-        app.register_keybinds().expect("Error registering keybinds");
+        app.register_keybinds().await?;
 
         if app.should_quit {
             return Ok(());

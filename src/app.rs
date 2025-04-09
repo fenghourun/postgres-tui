@@ -1,3 +1,4 @@
+use cli_log::info;
 use crossterm::event::{self, Event, KeyCode, KeyEvent};
 use std::{env, fmt::Display, io};
 
@@ -46,7 +47,7 @@ pub struct App {
 }
 
 impl App {
-    pub fn new() -> App {
+    pub async fn new() -> Result<App, Box<dyn std::error::Error>> {
         let user = match env::var("PGUSER") {
             Ok(user) => user,
             _ => String::from("postgres"),
@@ -68,19 +69,19 @@ impl App {
             db_name: db_name.clone(),
         };
 
-        let connection_manager_result = ConnectionManager::new(default_connection_options);
-
-        let mut connection_manager = connection_manager_result.unwrap();
+        info!("Connecting to database");
+        let mut connection_manager = ConnectionManager::new(default_connection_options).await?;
 
         let mut databases: Vec<Database> = connection_manager
             .get_databases()
+            .await?
             .into_iter()
             .map(|row| Database::new(row.get(0), Vec::new()))
             .collect();
 
         databases.sort_by(|a, b| a.name.cmp(&b.name));
 
-        App {
+        Ok(App {
             cluster: DatabaseCluster::new(databases),
             connection_manager,
             debug_message: String::from("test"),
@@ -94,7 +95,7 @@ impl App {
             user,
             db_name,
             host,
-        }
+        })
     }
 
     // Register keybinds each time the app is updated.
@@ -104,7 +105,7 @@ impl App {
     // 1) Input mode
     // 2) Focused Element
     //
-    pub fn register_keybinds(&mut self) -> io::Result<()> {
+    pub async fn register_keybinds(&mut self) -> io::Result<()> {
         if let Event::Key(key) = event::read()? {
             match self.input_mode {
                 InputMode::Normal => match key.code {
@@ -116,7 +117,7 @@ impl App {
                     KeyCode::Char('d') => self.show_debug = !self.show_debug,
                     _ => match self.focused_element {
                         FocusElement::Main => self.register_main_keybinds(key),
-                        FocusElement::Explorer => self.register_explorer_keybinds(key),
+                        FocusElement::Explorer => self.register_explorer_keybinds(key).await,
                         FocusElement::SearchBar => self.register_searchbar_keybinds(key),
                     },
                 },
@@ -145,12 +146,12 @@ impl App {
         }
     }
 
-    fn register_explorer_keybinds(&mut self, key: KeyEvent) {
+    async fn register_explorer_keybinds(&mut self, key: KeyEvent) {
         match key.code {
             KeyCode::Enter => self.select_database(),
             KeyCode::Char('j') => self.cluster.next(),
             KeyCode::Char('k') => self.cluster.prev(),
-            KeyCode::Char('o') => self.open_table(),
+            KeyCode::Char('o') => self.open_table().await,
             _ => {}
         }
     }
@@ -171,10 +172,10 @@ impl App {
         }
     }
 
-    fn open_table(&mut self) {
+    async fn open_table(&mut self) {
         match self.cluster.select_focused_table().cloned() {
             Some(mut current_table) => {
-                let columns = self.connection_manager.get_table(&current_table.name);
+                let columns = self.connection_manager.get_table(&current_table.name).await;
 
                 match columns {
                     Ok(column_names_row) => {
@@ -185,7 +186,7 @@ impl App {
                     Err(error) => self.show_debug_message(format!("Error: {}", error)),
                 }
 
-                let data = self.connection_manager.get_data(&current_table.name);
+                let data = self.connection_manager.get_data(&current_table.name).await;
 
                 match data {
                     Ok(data) => {
@@ -195,7 +196,6 @@ impl App {
 
                     Err(error) => self.show_debug_message(format!("Got an error: {error}")),
                 }
-                // self.try_into
             }
             None => (),
         }
@@ -214,7 +214,7 @@ impl App {
         }
     }
 
-    fn update_connection(&mut self, database_name: &String) {
+    async fn update_connection(&mut self, database_name: &String) {
         let connection_options_for_databse = PSQLConnectionOptions {
             host: String::from("localhost"),
             user: self.user.clone(),
@@ -223,10 +223,13 @@ impl App {
 
         let create_connection_result = self
             .connection_manager
-            .create_database_connection(connection_options_for_databse);
+            .create_database_connection(connection_options_for_databse)
+            .await;
 
         self.handle_error_with_debug(create_connection_result);
-        let result = self.connection_manager.get_tables_for_database();
+
+        let result = self.connection_manager.get_tables_for_database().await;
+
         let rows = self.handle_error_with_debug(result).unwrap_or_default();
 
         let mut table_names: Vec<String> = rows.iter().map(|row| row.get(0)).collect();
