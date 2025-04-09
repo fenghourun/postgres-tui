@@ -36,7 +36,7 @@ impl Component for KeybindsPopup {
             k: Move up
             i: In Normal Mode => Edit Mode
             esc: In Edit Mode => Normal Mode
-            b: Show Binds
+            ?: Show Binds
             d: Show debug window
             q: quit",
         )

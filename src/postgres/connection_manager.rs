@@ -1,6 +1,7 @@
-use postgres::{Client, Error, NoTls, Row};
+use tokio_postgres::{connect, Client, Error, NoTls, Row};
 
 use crate::app::PSQLConnectionOptions;
+use cli_log::{error, info};
 
 pub struct ConnectionManager {
     client: Client,
@@ -8,75 +9,86 @@ pub struct ConnectionManager {
 }
 
 impl ConnectionManager {
-    pub fn new(connection_options: PSQLConnectionOptions) -> Result<ConnectionManager, Error> {
-        let client_result = Client::connect(
+    pub async fn new(
+        connection_options: PSQLConnectionOptions,
+    ) -> Result<ConnectionManager, Error> {
+        let (client, connection) = connect(
             format!(
                 "host={} user={} dbname={}",
                 connection_options.host, connection_options.user, connection_options.db_name,
             )
             .as_str(),
             NoTls,
-        );
+        )
+        .await?;
 
-        match client_result {
-            Ok(client) => Ok(ConnectionManager {
-                client,
-                connection_options,
-            }),
-            Err(err) => Err(err),
-        }
+        info!("Connected to database");
+
+        tokio::spawn(async move {
+            if let Err(e) = connection.await {
+                error!("Connection error: {}", e);
+            }
+        });
+
+        Ok(ConnectionManager {
+            client,
+            connection_options,
+        })
     }
 
-    pub fn get_databases(&mut self) -> Vec<Row> {
-        self.client
+    pub async fn get_databases(&mut self) -> Result<Vec<Row>, Error> {
+        let databases = self
+            .client
             .query(
                 "SELECT datname from pg_database WHERE datistemplate = false",
                 &[],
             )
-            .expect("Get databases")
+            .await?;
+
+        Ok(databases)
     }
 
-    pub fn get_tables_for_database(&mut self) -> Result<Vec<Row>, Error> {
-        self.client.query(
-            "SELECT tablename FROM pg_tables where schemaname = 'public'",
-            &[],
-        )
+    pub async fn get_tables_for_database(&mut self) -> Result<Vec<Row>, Error> {
+        let tables = self
+            .client
+            .query(
+                "SELECT tablename FROM pg_tables where schemaname = 'public'",
+                &[],
+            )
+            .await?;
+
+        Ok(tables)
     }
 
-    pub fn create_database_connection(
+    pub async fn create_database_connection(
         &mut self,
         connection_options: PSQLConnectionOptions,
     ) -> Result<(), Error> {
-        let client_result = Client::connect(
+        connect(
             format!(
                 "host={} user={} dbname={}",
                 connection_options.host, connection_options.user, connection_options.db_name
             )
             .as_str(),
             NoTls,
-        );
+        )
+        .await?;
 
-        match client_result {
-            Ok(client) => {
-                self.client = client;
-                self.connection_options = connection_options;
-                Ok(())
-            }
-            Err(err) => Err(err),
-        }
+        Ok(())
     }
 
-    pub fn get_table(&mut self, table_name: &String) -> Result<Vec<Row>, Error> {
-        let result = self.client.query(
-            "SELECT column_name FROM information_schema.columns where table_name = ($1)",
-            &[&table_name],
-        );
-
-        result
+    pub async fn get_table(&mut self, table_name: &String) -> Result<Vec<Row>, Error> {
+        self.client
+            .query(
+                "SELECT column_name FROM information_schema.columns where table_name = ($1)",
+                &[&table_name],
+            )
+            .await
     }
 
-    pub fn get_data(&mut self, table_name: &String) -> Result<Vec<Row>, Error> {
+    pub async fn get_data(&mut self, table_name: &String) -> Result<Vec<Row>, Error> {
         self.client
             .query(&format!("SELECT * FROM {} LIMIT 10", table_name), &[])
+            .await
     }
 }
