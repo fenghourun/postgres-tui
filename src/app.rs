@@ -148,7 +148,7 @@ impl App {
 
     async fn register_explorer_keybinds(&mut self, key: KeyEvent) {
         match key.code {
-            KeyCode::Enter => self.select_database(),
+            KeyCode::Enter => self.select_database().await,
             KeyCode::Char('j') => self.cluster.next(),
             KeyCode::Char('k') => self.cluster.prev(),
             KeyCode::Char('o') => self.open_table().await,
@@ -201,13 +201,13 @@ impl App {
         }
     }
 
-    fn select_database(&mut self) {
+    async fn select_database(&mut self) {
         self.cluster.toggle_focused_database();
 
         for database in self.cluster.databases.iter_mut() {
             if database.is_connected {
                 let database_name = database.name.clone();
-                self.update_connection(&database_name);
+                self.update_connection(&database_name).await;
 
                 break;
             }
