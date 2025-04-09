@@ -1,11 +1,15 @@
+use deadpool_postgres::Pool;
+use std::collections::HashMap;
 use tokio_postgres::{connect, Client, Error, NoTls, Row};
 
 use crate::app::PSQLConnectionOptions;
 use cli_log::{error, info};
 
 pub struct ConnectionManager {
+    pools: HashMap<String, Pool>,
+    configs: HashMap<String, PSQLConnectionOptions>,
+    current_connection: String,
     client: Client,
-    connection_options: PSQLConnectionOptions,
 }
 
 impl ConnectionManager {
@@ -32,7 +36,9 @@ impl ConnectionManager {
 
         Ok(ConnectionManager {
             client,
-            connection_options,
+            current_connection: String::new(),
+            pools: HashMap::new(),
+            configs: HashMap::new(),
         })
     }
 

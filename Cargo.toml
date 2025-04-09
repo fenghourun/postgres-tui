@@ -14,4 +14,5 @@ unicode-width = "0.1"
 ratatui = "0.26.1"
 cli-log = "2.1.0"
 tokio-postgres = "0.7.13"
+deadpool-postgres = "0.14.1"
 
