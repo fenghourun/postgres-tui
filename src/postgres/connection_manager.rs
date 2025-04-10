@@ -42,6 +42,9 @@ impl ConnectionManager {
         })
     }
 
+    // Create a new connection to the database
+    pub async fn create_connection(&mut self, connection_options: PSQLConnectionOptions) {}
+
     pub async fn get_databases(&mut self) -> Result<Vec<Row>, Error> {
         let databases = self
             .client
