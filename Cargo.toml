@@ -15,4 +15,6 @@ ratatui = "0.26.1"
 cli-log = "2.1.0"
 tokio-postgres = "0.7.13"
 deadpool-postgres = "0.14.1"
+keyring = "3.6.2"
+sqlite = "0.37.0"
 

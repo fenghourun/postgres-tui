@@ -48,6 +48,8 @@ pub struct App {
 
 impl App {
     pub async fn new() -> Result<App, Box<dyn std::error::Error>> {
+        // App starts without any connections
+        // Save connections into sqlide
         let user = match env::var("PGUSER") {
             Ok(user) => user,
             _ => String::from("postgres"),
