@@ -3,7 +3,7 @@ use crossterm::event::{self, Event, KeyCode, KeyEvent};
 use std::{env, fmt::Display, io};
 
 use crate::{
-    postgres::connection_manager::ConnectionManager,
+    postgres::{connection_manager::ConnectionManager, credential_manager::CredentialManager},
     widgets::{
         database::Database, database_cluster::DatabaseCluster, database_table::DatabaseTable,
     },
@@ -31,6 +31,7 @@ pub enum FocusElement {
 // App should store state which are separate from widgets.
 // Widgets should read the state and determin what to render.
 pub struct App {
+    pub credential_manager: CredentialManager,
     pub connection_manager: ConnectionManager,
     pub cluster: DatabaseCluster,
     pub debug_message: String,
@@ -40,6 +41,7 @@ pub struct App {
     pub show_debug: bool,
     pub show_keybinds: bool,
     pub should_quit: bool,
+    // TODO: Move to credential manager
     pub user: String,
     pub db_name: String,
     pub host: String,
@@ -83,7 +85,10 @@ impl App {
 
         databases.sort_by(|a, b| a.name.cmp(&b.name));
 
+        let credential_manager = CredentialManager::new();
+
         Ok(App {
+            credential_manager,
             cluster: DatabaseCluster::new(databases),
             connection_manager,
             debug_message: String::from("test"),
